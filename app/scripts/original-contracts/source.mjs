@@ -177,18 +177,21 @@ export async function openCorpus(appRoot) {
     const choices = [];
     for (const variant of index.modules.filter((module) => module.ids.includes(id))) {
       for (const origin of variant.origins) {
-        if (!options.source || origin.source === options.source) choices.push({ variant, origin });
+        if (options.source && origin.source !== options.source) continue;
+        const source = await javascript(origin.source);
+        if (origin.url !== source.record.url) throw new Error(`factory URL mismatch: ${id}`);
+        // Inventory variants merge equal factory bytes across different IDs.
+        // Authenticate each indexed origin before selecting by its actual IDs.
+        const registration = exactlyOne(source.factories.filter((entry) =>
+          entry.node.start === origin.start && entry.node.end === origin.end),
+        `factory ${id} registration`);
+        const witness = source.witness(registration.node, `factory ${id}`);
+        if (witness.sha256 !== variant.sha256) throw new Error(`factory content mismatch: ${id}`);
+        if (registration.ids.includes(id)) choices.push({ source, registration, witness });
       }
     }
-    if (choices.length !== 1) throw new Error(`factory ${id}: ${choices.length} origins; explicit chunk context required`);
-    const { variant, origin } = choices[0];
-    const source = await javascript(origin.source);
-    if (origin.url !== source.record.url) throw new Error(`factory URL mismatch: ${id}`);
-    const registration = exactlyOne(source.factories.filter((entry) =>
-      entry.node.start === origin.start && entry.node.end === origin.end && entry.ids.includes(id)),
-    `factory ${id} registration`);
-    const witness = source.witness(registration.node, `factory ${id}`);
-    if (witness.sha256 !== variant.sha256) throw new Error(`factory content mismatch: ${id}`);
+    if (choices.length !== 1) throw new Error(`factory ${id} registration: ${choices.length} origins; explicit chunk context required`);
+    const { source, registration, witness } = choices[0];
     return { id, ids: registration.ids, node: registration.node, capture: source,
       runtime: registration.node.params[0]?.name,
       witness: (node, label) => source.witness(node, label),

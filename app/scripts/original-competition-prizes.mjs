@@ -21,7 +21,7 @@ export const APP_ROOT = path.resolve(
   FORMATS =
     "packages/frontend/src/components/leaderboard/original-prize-formats.mjs";
 const SHARED =
-    "49b11417fd4d500d8821c94df6c215b77da2248875f943570f2b9df6c9b35213",
+    "c27376f94f5aacde0c1d274c5279440da31beef5e9fcd553be3b2a40c5e840f1",
   PINS = {
     590407: [
       "3f494070c58a6d7f0f70279887ef648107935b765fe849de3e9ec100cec45dda",

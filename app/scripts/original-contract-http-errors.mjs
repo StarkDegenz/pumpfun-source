@@ -20,7 +20,7 @@ export const CONTRACT_PATH =
 export const COMPATIBILITY_PATH =
   "reconstruction/contract-http-errors/inventory-compatibility.json";
 const SHARED_SOURCE_SHA256 =
-  "49b11417fd4d500d8821c94df6c215b77da2248875f943570f2b9df6c9b35213";
+  "c27376f94f5aacde0c1d274c5279440da31beef5e9fcd553be3b2a40c5e840f1";
 const SOURCE = "evidence/web/objects/2b47dd0b38a1608f.js";
 const EXPECTED = {
   898661: [

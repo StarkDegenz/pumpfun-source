@@ -146,3 +146,39 @@ test('outer two-element registration is metadata, not a nested factory container
   await f.save();
   await assert.rejects((await openCorpus(f.root)).factory(7), /registration/);
 });
+
+test('hash-merged factories resolve by their actual registration IDs within a chunk', async (t) => {
+  const f = await fixture(t);
+  const text = '(globalThis.TURBOPACK||(globalThis.TURBOPACK=[])).push(["c",7,e=>{},8,e=>{}]);';
+  const first = text.indexOf('e=>{}'), second = text.indexOf('e=>{}', first + 1);
+  f.record.bytes = Buffer.byteLength(text);
+  f.record.sha256 = sha256(text);
+  f.index.modules = [{ ids: [7, 8], sha256: sha256('e=>{}'), origins: [first, second].map(start =>
+    ({ source: f.source, url: f.record.url, start, end: start + 'e=>{}'.length })) }];
+  await writeFile(path.join(f.root, f.source), text);
+  await f.save();
+  const corpus = await openCorpus(f.root);
+  for (const [id, start] of [[7, first], [8, second]]) {
+    const actual = await corpus.factory(id, { source: f.source });
+    assert.deepEqual(actual.ids, [id]);
+    assert.deepEqual(actual.provenance.utf16, [start, start + 'e=>{}'.length]);
+    assert.equal(actual.provenance.sha256, sha256('e=>{}'));
+  }
+  // An unrelated alias must not hide a corrupt indexed range.
+  f.index.modules[0].origins[1].start++;
+  await f.save();
+  await assert.rejects((await openCorpus(f.root)).factory(7, { source: f.source }), /registration/);
+});
+
+test('real captured portfolio chart aliases each resolve to their sole registration', async () => {
+  const root = new URL('../', import.meta.url);
+  const source = 'evidence/web/objects/910b5c033a62f9b1.js';
+  const corpus = await openCorpus(root);
+  for (const [id, start, end] of [[820984, 27614, 27651], [955871, 27524, 27561],
+    [415809, 27479, 27516], [514287, 27569, 27606]]) {
+    const actual = await corpus.factory(id, { source });
+    assert.deepEqual(actual.ids, [id]);
+    assert.deepEqual(actual.provenance.utf16, [start, end]);
+    assert.equal(actual.provenance.sha256, 'ba8acac696188ebf2b0f8a345344d353b8a347f40edce3afee2ddc45d860914c');
+  }
+});
