@@ -1,0 +1,24 @@
+name: PumpPortal transport failure
+on:
+  pull_request:
+    paths:
+      - scripts/pumpportal-capture.mjs
+      - scripts/test_pumpportal_transport.mjs
+      - .github/workflows/pumpportal-transport.yml
+  push:
+    paths:
+      - scripts/pumpportal-capture.mjs
+      - scripts/test_pumpportal_transport.mjs
+      - .github/workflows/pumpportal-transport.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  loopback-transport:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: node --test scripts/test_pumpportal_transport.mjs

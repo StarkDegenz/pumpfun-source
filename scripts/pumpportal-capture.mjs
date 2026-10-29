@@ -44,6 +44,7 @@ const events = [];
 const trackedTokens = new Set();
 const startUtc = new Date().toISOString();
 let endUtc = null;
+let transportError = false;
 
 console.log(`[capture] connecting to PumpPortal WebSocket...`);
 console.log(`[capture] duration: ${DURATION_S}s, output: ${OUTPUT_DIR}`);
@@ -97,12 +98,13 @@ ws.addEventListener("message", (evt) => {
 });
 
 ws.addEventListener("error", (err) => {
+  transportError = true;
   console.error(`[capture] websocket error:`, err.message || err);
 });
 
 ws.addEventListener("close", (evt) => {
   console.log(`[capture] websocket closed (code=${evt.code})`);
-  finalise();
+  finalise(evt);
 });
 
 // Graceful shutdown
@@ -123,9 +125,16 @@ function sha256(buf) {
   return createHash("sha256").update(buf).digest("hex");
 }
 
-function finalise() {
+function finalise(closeEvent) {
   clearTimeout(shutdownTimer);
   endUtc = new Date().toISOString();
+  // Keep partial evidence, but never report a failed connection as a successful
+  // capture. 1005 denotes a close frame with no status, not a transport failure.
+  const websocket = {
+    close_code: closeEvent.code,
+    had_error: transportError,
+    failed: transportError || ![1000, 1005].includes(closeEvent.code),
+  };
 
   console.log(`[capture] finalising: ${events.length} events, ${trackedTokens.size} tokens`);
 
@@ -198,6 +207,7 @@ function finalise() {
     start_utc: startUtc,
     end_utc: endUtc,
     duration_seconds: DURATION_S,
+    websocket,
     total_events: events.length,
     event_types: typeCounts,
     unique_tokens: trackedTokens.size,
@@ -232,6 +242,8 @@ ${baseSubscriptions.map((s) => `- \`${s.method}\``).join("\n")}
 | Start | ${startUtc} |
 | End | ${endUtc} |
 | Duration | ${DURATION_S}s |
+| Transport outcome | ${websocket.failed ? "Failed (partial evidence retained)" : "Normal close"} |
+| WebSocket close code | ${websocket.close_code} |
 | Total events | ${events.length} |
 | Unique tokens | ${trackedTokens.size} |
 | Tokens with trades | ${summary.tokens_with_trades} |
@@ -364,6 +376,8 @@ if __name__ == "__main__":
   );
 
   console.log(`[capture] wrote ${Object.keys(manifest).length + 1} files to ${OUTPUT_DIR}`);
-  console.log(`[capture] done.`);
-  process.exit(0);
+  console.log(websocket.failed
+    ? `[capture] failed; partial evidence retained.`
+    : `[capture] done.`);
+  process.exit(websocket.failed ? 1 : 0);
 }
