@@ -70,7 +70,7 @@ ws.addEventListener("message", (evt) => {
     events.push({ receivedAt, data });
 
     // Cascade: when a new token is created, subscribe to its trades
-    if (data?.txType === "create" && data.mint && !trackedTokens.has(data.mint)) {
+    if (data?.txType === "create" && typeof data.mint === "string" && data.mint && !trackedTokens.has(data.mint)) {
       trackedTokens.add(data.mint);
       ws.send(
         JSON.stringify({

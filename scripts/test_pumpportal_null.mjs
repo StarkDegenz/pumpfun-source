@@ -10,6 +10,7 @@ import test from "node:test";
 
 const capture = fileURLToPath(new URL("./pumpportal-capture.mjs", import.meta.url));
 const messages = ["null", "42", "[]", '"notice"', "not JSON",
+  JSON.stringify({ txType: "create", mint: 42 }),
   JSON.stringify({ txType: "buy", mint: "11111111111111111111111111111111", solAmount: 1 })];
 function frame(opcode, body) {
   assert.ok(body.length < 126);
@@ -66,11 +67,13 @@ test("each received frame is retained once, including JSON null and non-JSON tex
   assert.equal(events.length, messages.length);
   assert.deepEqual(events.map(({ receivedAt, ...event }) => event), [
     { data: null }, { data: 42 }, { data: [] }, { data: "notice" },
-    { raw: "not JSON" }, { data: JSON.parse(messages.at(-1)) },
+    { raw: "not JSON" }, { data: { txType: "create", mint: 42 } },
+    { data: JSON.parse(messages.at(-1)) },
   ]);
   const summary = read("summary.json");
-  assert.equal(summary.total_events, 6);
-  assert.deepEqual(summary.event_types, { unknown: 5, buy: 1 });
+  assert.equal(summary.total_events, 7);
+  assert.deepEqual(summary.event_types, { unknown: 5, create: 1, buy: 1 });
+  assert.equal(summary.unique_tokens, 0, "non-string mints must not trigger subscriptions");
   assert.equal(read("token-index.json")[0].event_count, 1);
 });
 
