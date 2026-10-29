@@ -70,7 +70,7 @@ ws.addEventListener("message", (evt) => {
     events.push({ receivedAt, data });
 
     // Cascade: when a new token is created, subscribe to its trades
-    if (data.txType === "create" && data.mint && !trackedTokens.has(data.mint)) {
+    if (data?.txType === "create" && data.mint && !trackedTokens.has(data.mint)) {
       trackedTokens.add(data.mint);
       ws.send(
         JSON.stringify({
@@ -330,7 +330,8 @@ def main():
             events = json.load(f)
         event_mints = set()
         for e in events:
-            m = e.get("data", {}).get("mint")
+            data = e.get("data")
+            m = data.get("mint") if isinstance(data, dict) else None
             if m:
                 event_mints.add(m)
         index_mints = set(t["mint"] for t in token_index)
