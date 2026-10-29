@@ -1,0 +1,24 @@
+name: PumpPortal capture output
+on:
+  pull_request:
+    paths:
+      - scripts/pumpportal-capture.mjs
+      - scripts/test_pumpportal_output.mjs
+      - .github/workflows/pumpportal-capture.yml
+  push:
+    paths:
+      - scripts/pumpportal-capture.mjs
+      - scripts/test_pumpportal_output.mjs
+      - .github/workflows/pumpportal-capture.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  offline-output:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: node --test scripts/test_pumpportal_output.mjs

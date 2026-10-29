@@ -12,11 +12,12 @@
  * Usage:
  *   PUMPPORTAL_API_KEY=<key> node scripts/pumpportal-capture.mjs \
  *     [--duration 300] [--output research/pumpportal-live-capture-20261028]
+ * Each capture requires a new output directory; existing packets are never resumed.
  */
 
 import { createHash } from "node:crypto";
 import { writeFileSync, readdirSync, readFileSync, mkdirSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 
 // --------------- CLI args ---------------
 
@@ -35,7 +36,16 @@ if (!API_KEY) {
 const DURATION_S = parseInt(argVal("duration", "300"), 10);
 const OUTPUT_DIR = resolve(argVal("output", "research/pumpportal-live-capture-20261028"));
 
-mkdirSync(OUTPUT_DIR, { recursive: true });
+mkdirSync(dirname(OUTPUT_DIR), { recursive: true });
+try {
+  // Reserve the final directory exclusively before connecting. A recursive
+  // mkdir silently reuses an existing packet, which finalise() would overwrite.
+  mkdirSync(OUTPUT_DIR);
+} catch (error) {
+  if (error.code !== "EEXIST") throw error;
+  console.error("Error: output already exists; choose a new --output directory.");
+  process.exit(1);
+}
 
 // --------------- WebSocket capture ---------------
 
