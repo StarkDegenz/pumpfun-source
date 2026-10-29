@@ -32,7 +32,18 @@ if (!API_KEY) {
   process.exit(1);
 }
 
-const DURATION_S = parseInt(argVal("duration", "300"), 10);
+// Node clamps timer delays above 2^31-1 ms to 1 ms. Reject those values
+// rather than producing a successful near-empty capture with misleading metadata.
+const durationIndex = args.indexOf("--duration");
+const durationText = durationIndex < 0 ? "300" : args[durationIndex + 1];
+const DURATION_S = Number(durationText);
+if (
+  typeof durationText !== "string" || !/^[0-9]+$/.test(durationText) ||
+  !Number.isSafeInteger(DURATION_S) || DURATION_S < 1 || DURATION_S > 2_147_483
+) {
+  console.error("Error: --duration must be an integer from 1 to 2147483 seconds.");
+  process.exit(1);
+}
 const OUTPUT_DIR = resolve(argVal("output", "research/pumpportal-live-capture-20261028"));
 
 mkdirSync(OUTPUT_DIR, { recursive: true });
