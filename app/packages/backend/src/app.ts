@@ -468,7 +468,15 @@ export function buildApp(fixtures: Fixture[] = [], opts: BuildAppOptions = {}) {
         path: pathname,
       });
     }
-    if (fixture.headers) reply.headers(fixture.headers);
+    if (fixture.headers) {
+      // JSON/string fixtures are decoded values, reserialized below. Only raw
+      // buffers retain captured compression; bodyless replies retain metadata.
+      const reencodedBody = request.method !== "HEAD" &&
+        ![204, 205, 304].includes(fixture.status) && !Buffer.isBuffer(fixture.body);
+      reply.headers(Object.fromEntries(Object.entries(fixture.headers).filter(
+        ([name]) => !reencodedBody || name.toLowerCase() !== "content-encoding",
+      )));
+    }
     // RFC 9110 section 15.3.6 forbids content in a 205 response.
     if (fixture.status === 205) return reply.code(205).send();
     // Fixture bodies are JSON by default; explicit non-JSON types stay verbatim.
