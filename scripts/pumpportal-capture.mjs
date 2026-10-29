@@ -291,6 +291,15 @@ def main():
     with open(manifest_path) as f:
         manifest = json.load(f)
 
+    if not isinstance(manifest, dict):
+        print("FAIL: manifest.json must be an object")
+        return 1
+    required = {"events.json", "token-index.json", "summary.json", "README.md", "verify.py"}
+    missing = sorted(required - set(manifest))
+    if missing:
+        print(f"FAIL: missing required manifest entries: {', '.join(missing)}")
+        return 1
+
     errors = 0
     for rel_path, expected_hash in manifest.items():
         full = os.path.join(PACKET_DIR, rel_path)
